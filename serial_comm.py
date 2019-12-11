@@ -16,12 +16,13 @@ class SerialComm(object):
     Low level serial operations
     '''
     log = logging.getLogger('piarm.serial.SerialComm')
-    # Default timeout for serial reading(se              0000000000000000000000000000000conds)
+    # Default timeout for serial reading(seconds)
     timeout = 5
 
     def __init__(self, handlerNotification=None, *args, **kwargs):
         self.alive = False
-        self.timeout = 0.01
+        # self.timeout = 0.01
+        self.timeout = 1
         self._dataRecieved = False
         self._responseEvent = None
         self._expectResponse = None

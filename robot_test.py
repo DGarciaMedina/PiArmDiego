@@ -1,4 +1,5 @@
 import piarm
+import time
 
 def openConnection(robot):
 	if robot.alive:
@@ -33,17 +34,37 @@ def move_to_default_pos(robot):
 		return True
 	else:
 		return False
+
+def move_to_pos(robot, pos):
+	if robot.alive:
+				
+		for ID in range(1, 7):
+			robot.servoWrite(ID, int(pos[ID - 1]), 500)
+			
+		return True
+	else:
+		return False
 		
 def read_positions(robot):
 	positions = [-1]*6
 	if robot.alive:
 		for ID in range(1, 7):
+			print("Checking ID:", ID, "out of 7")
 			response = robot.positionRead(ID)
+			while 1:
+				print(response)
+				if type(response) == list:
+					if len(response) >= 7:
+						break
+				# time.sleep(1)
+				response = robot.positionRead(ID)
+			print(response)
 			pos = int.from_bytes(response[5]+response[6], byteorder='little')
-			if pos > MAX_VALUE:
+			if pos > 999 or pos < 0:
 				print("The position was invalid")
 				return False
 			else:
+				print("The position received was",pos)
 				positions[ID-1] = pos
 		return positions	
 	else:
@@ -55,9 +76,18 @@ def main():
 	robot = piarm.PiArm()
 	res = openConnection(robot)
 	print(res)
-	# res = move_to_default_pos(robot)
-	res = read_positions(robot)
+	time.sleep(2)
+	res = move_to_default_pos(robot)
 	print(res)
+	time.sleep(2)
+	res = move_to_pos(robot,[800,500,500,700,500,500])
+	print(res)
+	time.sleep(2)
+	res = move_to_pos(robot,[200,500,500,500,500,500])
+	print(res)
+	time.sleep(5)
+	res = read_positions(robot)
+	print("Reading pos:", res)
 	res = closeConnection(robot)
 	print(res)
 	print("Successful test!") 
