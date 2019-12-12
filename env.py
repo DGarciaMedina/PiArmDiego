@@ -108,7 +108,7 @@ class MyArm2D:
         if self.robot.alive:	
             for ID in range(3, 6):
                 self.robot.servoWrite(8 - ID, int(angles_piarm[ID - 3]), 500)
-            time.sleep(1)
+            # time.sleep(1)
             return True
         else:
             return False

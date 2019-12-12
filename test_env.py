@@ -10,28 +10,22 @@ is_done = False
 while 1:
     
     k = cv2.waitKey(40)
-    # UP
-    if k == 82:
+    if k == ord("a"):
         s, r, is_done = arm.step(np.array([5, 0, 0]))
         print(r)
-    # DOWN
-    elif k == 84:
+    elif k == ord("b"):
         s, r, is_done = arm.step(np.array([-5, 0, 0]))
         print(r)
-    # RIGHT
-    elif k == 83:
+    elif k == ord("c"):
         s, r, is_done = arm.step(np.array([0, 5, 0]))
         print(r)
-    # LEFT
-    elif k == 81:
+    elif k == ord("d"):
         s, r, is_done = arm.step(np.array([0, -5, 0]))
         print(r)
-    # a/A
-    elif k == ord("a") or k == ord("A"):
+    elif k == ord("e"):
         s, r, is_done = arm.step(np.array([0, 0, 5]))
         print(r)
-    # s/S
-    elif k == ord("s") or k == ord("S"):
+    elif k == ord("f"):
         s, r, is_done = arm.step(np.array([0, 0, -5]))
         print(r)
     # q/Q (exit)
