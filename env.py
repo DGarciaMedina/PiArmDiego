@@ -109,12 +109,7 @@ class MyArm2D:
 
         self.update_positions()
 
-        self.timestep += 1
-
         self.update_distance_2_goal()
-
-        if self.timestep >= self.max_timestep:
-            self.reset()
 
     def render(self):
 
@@ -192,9 +187,20 @@ class MyArm2D:
                 return False
         return True
 
+    def get_reward(self, forbidden_action):
+
+        if forbidden_action:
+            reward_scaling_factor = 2
+        else:
+            reward_scaling_factor = 1
+
+        return - self.distance2goal * reward_scaling_factor 
+    
     def step(self, actions):
 
         self.move_arm(actions)
+
+        forbidden_action = False
 
         okay_angles = self.check_arm_angles()
 
@@ -203,12 +209,20 @@ class MyArm2D:
         if not okay_angles:
             print("An angle threshold was exceeded")
             self.move_arm(-actions)
+            forbidden_action = True
 
         if not okay_positions:
-            print("A position threshold was exceeded")
+            print("A position threshold was exqqceeded")
             self.move_arm(-actions)
+            forbidden_action = True
 
+        self.render()
+
+        r = self.get_reward(forbidden_action)
+        
         self.timestep += 1
 
-        if self.timestep > self.max_timestep:
-            self.reset()
+        is_done = self.timestep >= self.max_timestep
+
+        return self.angles, r, is_done
+            
