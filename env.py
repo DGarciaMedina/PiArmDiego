@@ -6,7 +6,14 @@ import random
 
 class MyArm2D:
 
-    def __init__(self):
+    def __init__(self, move_robot = False):
+
+        self.move_robot = move_robot
+
+        if self.move_robot:
+            self.robot = piarm.PiArm()
+            self.open_connection()
+            self.DEFAULT = [500, 500, 500, 500, 500, 500]
         
         self.num_members = 3
         self.adjustable_joints = [3,4,5]
@@ -53,6 +60,56 @@ class MyArm2D:
 
         self.distance2goal = None
         self.update_distance_2_goal()
+
+    def __del__(self):
+        self.close_connection()
+
+    def open_connection(self):
+        if self.robot.alive:
+            raise Exception("Robot is already switched on")
+        self.robot.connect("/dev/ttyS0")
+        if self.robot.alive:
+            print("Success connecting to robot")
+            return True
+        else:
+            print("Failed to connect to robot")
+            return False
+
+    def move_to_default_pos(self):
+        if self.robot.alive:
+            for ID in range(1, 7):
+                self.robot.servoWrite(ID, int(self.DEFAULT[ID - 1]), 500)
+            return True
+        else:
+            return False
+
+    def move_to_pos(self):
+
+        # First, convert the angles in degrees between -90º and +90º
+        # to angles between 125 and 875
+
+        angles_deg = self.angles
+
+        angles_piarm = [int(500 + (375/90)*angle_deg) for angle_deg in angles_deg]
+
+        if self.robot.alive:	
+            for ID in range(3, 6):
+                self.robot.servoWrite(ID, int(angles_piarm[ID - 1]), 500)
+            time.sleep(1)
+            return True
+        else:
+            return False
+
+    def close_connection(self):
+        if not self.robot.alive:
+            raise Exception("Robot is already switched off")
+        self.robot.disconnect()
+        if not self.robot.alive:
+            print("Success disconnecting from robot")
+            return True
+        else:
+            print("Failed to disconnect from robot")
+            return False
 
     def update_goal_coords(self):
 
@@ -170,6 +227,9 @@ class MyArm2D:
 
         self.render()
 
+        if self.move_robot:
+            self.move_to_default_pos()
+
     def check_arm_angles(self):
         for member_index in range(self.num_members):
             if self.angles[member_index] < self.min_angles[member_index]:
@@ -217,6 +277,9 @@ class MyArm2D:
             forbidden_action = True
 
         self.render()
+
+        if self.move_robot:
+            self.move_to_pos()
 
         r = self.get_reward(forbidden_action)
         
