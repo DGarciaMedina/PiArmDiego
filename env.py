@@ -94,23 +94,24 @@ class MyArm2D:
         # 0 -> 125
 
         angles_deg = self.angles - 90
-        angles_deg[1] -= angles_deg[0]
         angles_deg[2] -= angles_deg[1]
-
+        angles_deg[1] -= angles_deg[0]
+        
         angles_piarm = [int(500 + (375/90)*angle_deg) for angle_deg in angles_deg]
+
+        angles_piarm[0] = 1000 - angles_piarm[0]
+        angles_piarm[1] = 1000 - angles_piarm[1]
 
         print("Angles in degrees: ", angles_deg)
         print("Moving arms with angles: ", angles_piarm)
 
-        '''
         if self.robot.alive:	
             for ID in range(3, 6):
-                self.robot.servoWrite(ID, int(angles_piarm[ID - 3]), 500)
+                self.robot.servoWrite(8 - ID, int(angles_piarm[ID - 3]), 500)
             time.sleep(1)
             return True
         else:
             return False
-        '''
 
     def close_connection(self):
         if not self.robot.alive:
