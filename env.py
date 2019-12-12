@@ -62,6 +62,7 @@ class MyArm2D:
         self.update_distance_2_goal()
 
     def __del__(self):
+        print("Closing connection...")
         if self.move_robot:
             self.close_connection()
 
@@ -93,6 +94,9 @@ class MyArm2D:
 
         angles_piarm = [int(500 + (375/90)*angle_deg) for angle_deg in angles_deg]
 
+        print("Angles in degrees: ", angles_deg)
+        print("Moving arms with angles: ", angles_piarm)
+        '''
         if self.robot.alive:	
             for ID in range(3, 6):
                 self.robot.servoWrite(ID, int(angles_piarm[ID - 3]), 500)
@@ -100,6 +104,7 @@ class MyArm2D:
             return True
         else:
             return False
+        '''
 
     def close_connection(self):
         if not self.robot.alive:
