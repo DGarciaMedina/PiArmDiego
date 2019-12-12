@@ -90,12 +90,18 @@ class MyArm2D:
         # First, convert the angles in degrees between -90º and +90º
         # to angles between 125 and 875
 
-        angles_deg = self.angles
+        # 90 -> 500
+        # 0 -> 125
+
+        angles_deg = self.angles - 90
+        angles_deg[1] -= angles_deg[0]
+        angles_deg[2] -= angles_deg[1]
 
         angles_piarm = [int(500 + (375/90)*angle_deg) for angle_deg in angles_deg]
 
         print("Angles in degrees: ", angles_deg)
         print("Moving arms with angles: ", angles_piarm)
+
         '''
         if self.robot.alive:	
             for ID in range(3, 6):
