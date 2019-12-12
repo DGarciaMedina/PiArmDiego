@@ -62,7 +62,8 @@ class MyArm2D:
         self.update_distance_2_goal()
 
     def __del__(self):
-        self.close_connection()
+        if self.move_robot:
+            self.close_connection()
 
     def open_connection(self):
         if self.robot.alive:
@@ -94,7 +95,7 @@ class MyArm2D:
 
         if self.robot.alive:	
             for ID in range(3, 6):
-                self.robot.servoWrite(ID, int(angles_piarm[ID - 1]), 500)
+                self.robot.servoWrite(ID, int(angles_piarm[ID - 3]), 500)
             time.sleep(1)
             return True
         else:

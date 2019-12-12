@@ -2,7 +2,7 @@ from env import MyArm2D
 import cv2
 import numpy as np
 
-arm = MyArm2D()
+arm = MyArm2D(move_robot=True)
 arm.reset()
 
 is_done = False
