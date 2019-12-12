@@ -4,7 +4,8 @@ import time
 def openConnection(robot):
 	if robot.alive:
 		raise Exception("Robot is already switched on")
-	robot.connect("/dev/ttyS0")
+	# robot.connect("/dev/ttyS0")
+	robot.connect("COM3")
 	if robot.alive:
 		print("Success connecting to robot")
 		return True

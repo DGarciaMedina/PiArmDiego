@@ -220,7 +220,8 @@ class MainApp(piarm.PiArm, tk.Tk):
         This function connects the serial port
         '''
         if self.connect_button.cget('text') == 'Connect' and self.com_entry.get():
-            robot.connect("/dev/"+self.com_entry.get())
+            # robot.connect("/dev/"+self.com_entry.get())
+            robot.connect(self.com_entry.get())
             if robot.alive:
                 self.connect_button.config(relief="sunken", text="Disconnect")
                 self.circle.itemconfigure(self.indication, fill="green3")

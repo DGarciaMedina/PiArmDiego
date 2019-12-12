@@ -69,7 +69,7 @@ class MyArm2D:
     def open_connection(self):
         if self.robot.alive:
             raise Exception("Robot is already switched on")
-        self.robot.connect("/dev/ttyS0")
+        self.robot.connect("COM3")
         if self.robot.alive:
             print("Success connecting to robot")
             return True
