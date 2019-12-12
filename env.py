@@ -2,6 +2,7 @@ import piarm
 import time
 import numpy as np
 import cv2
+import random
 
 class MyArm2D:
 
@@ -31,7 +32,7 @@ class MyArm2D:
         self.member_thickness = 30
         
         self.img_width = 1000
-        self.x_offset = self.img_width/2
+        self.x_offset = int(self.img_width/2)
         self.y_offset = self.lengths["h_0"]
         self.img_height = int(sum(list(self.lengths.values())) + self.y_offset + 20)
 
@@ -42,10 +43,34 @@ class MyArm2D:
 
         # This is to check that all the joints (except for the last one) is above
         # the ground
-        self.min_joint_heights = [10, 10, 0]
+        self.min_joint_heights = [20, 20, 10]
+
+        self.goal_coords = [None, None]
+        self.update_goal_coords()
 
         self.joint_positions = [[0,0] for i in range(self.num_members + 1)]
         self.update_positions()
+
+        self.distance2goal = None
+        self.update_distance_2_goal()
+
+    def update_goal_coords(self):
+
+        max_length = sum(list(self.lengths.values())[1:])
+
+        r = random.uniform(0.8*max_length,max_length)
+        theta = random.uniform(-np.pi/4, np.pi/2) 
+
+        x = r * np.sin(theta)
+        y = r * np.cos(theta)
+
+        self.goal_coords = [int(x), int(y)]
+
+    def update_distance_2_goal(self):
+        gripper_pos = self.joint_positions[-1]
+        
+        self.distance2goal = np.sqrt(sum([(gripper_pos[i] - self.goal_coords[i])**2 for i in range(2)]))
+
 
     def update_positions(self):
         """
@@ -53,7 +78,7 @@ class MyArm2D:
             motor 5. It is positive if it is away from the origin.
         """
         
-        self.joint_positions[0] = [self.x_offset, self.y_offset + self.lengths["h_0"]]
+        self.joint_positions[0] = [0, self.lengths["h_0"]]
         self.joint_positions[1] = [
             self.joint_positions[0][0] + self.lengths["a"] * np.sin(np.deg2rad(self.angles[0])),
             self.joint_positions[0][1] + self.lengths["a"] * np.cos(np.deg2rad(self.angles[0]))
@@ -86,6 +111,8 @@ class MyArm2D:
 
         self.timestep += 1
 
+        self.update_distance_2_goal()
+
         if self.timestep >= self.max_timestep:
             self.reset()
 
@@ -102,16 +129,34 @@ class MyArm2D:
                                  (int(self.x_offset - self.base_width/2 + self.base_width), self.y_offset + self.base_height),
                                  (0, 165, 255),
                                  -1)
+
+        goal_x, goal_y = self.goal_coords
+        
+        self.img = cv2.circle(self.img, (goal_x + self.x_offset, goal_y + self.y_offset), int(self.member_thickness/2), (128, 0, 128), 5)
         
         for member_id in range(self.num_members):
-            first_joint = tuple(self.joint_positions[member_id])
-            second_joint = tuple(self.joint_positions[member_id + 1])
+            first_joint = self.joint_positions[member_id].copy()
+            second_joint = self.joint_positions[member_id + 1].copy()
 
-            self.img = cv2.line(self.img, first_joint, second_joint, (255,0,0), self.member_thickness)
-            self.img = cv2.circle(self.img, first_joint, int(self.member_thickness/2), (255,255,0), -1)
+            first_joint[0] += self.x_offset
+            first_joint[1] += self.y_offset
+
+            second_joint[0] += self.x_offset
+            second_joint[1] += self.y_offset
+
+            self.img = cv2.line(self.img, tuple(first_joint), tuple(second_joint), (255,0,0), self.member_thickness)
+            self.img = cv2.circle(self.img, tuple(first_joint), int(self.member_thickness/2), (255,255,0), -1)
 
         # Flip image upside down
         self.img = cv2.flip(self.img, 0)
+
+        self.img = cv2.putText(self.img,
+                               "Distance: " + str(round(self.distance2goal,2)),
+                               (10, 30),
+                               cv2.FONT_HERSHEY_SIMPLEX,
+                               1,
+                               (255,255,255),
+                               2)
 
         cv2.imshow("Arm", self.img)
         cv2.moveWindow("Arm",20,50)
@@ -125,6 +170,8 @@ class MyArm2D:
         self.img = np.zeros((self.img_height, self.img_width, 3))
 
         self.timestep = 0
+
+        self.update_goal_coords()
 
         self.render()
 
@@ -141,7 +188,7 @@ class MyArm2D:
             member_pos = self.joint_positions[joint_index][1]
             min_height = self.min_joint_heights[joint_index-1]
             
-            if member_pos < min_height + self.y_offset:
+            if member_pos < min_height:
                 return False
         return True
 
