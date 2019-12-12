@@ -69,7 +69,7 @@ class MyArm2D:
     def open_connection(self):
         if self.robot.alive:
             raise Exception("Robot is already switched on")
-        self.robot.connect("/dev/ttyS0")
+        self.robot.connect("COM3")
         if self.robot.alive:
             print("Success connecting to robot")
             return True
@@ -98,6 +98,8 @@ class MyArm2D:
         angles_deg[2] -= angles_deg[1]
 
         angles_piarm = [int(500 + (375/90)*angle_deg) for angle_deg in angles_deg]
+
+        angles_piarm[0] = 1000 - angles_piarm[0]
 
         print("Angles in degrees: ", angles_deg)
         print("Moving arms with angles: ", angles_piarm)
