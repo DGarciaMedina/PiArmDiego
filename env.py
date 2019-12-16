@@ -6,7 +6,9 @@ import random
 
 class MyArm2D:
 
-    def __init__(self, move_robot = False):
+    def __init__(self, port, move_robot = False):
+
+        self.port = port
 
         self.move_robot = move_robot
 
@@ -17,6 +19,11 @@ class MyArm2D:
         
         self.num_members = 3
         self.adjustable_joints = [3,4,5]
+
+        self.state_dim = 2 + self.num_members
+        self.action_dim = self.num_members
+        self.action_space_high = 5.0
+        self.action_space_low = -5.0
         
         self.initial_height = 73 # height in mm of motor 5's axle
         self.lengths = {
@@ -46,7 +53,7 @@ class MyArm2D:
         self.img = np.zeros((self.img_height, self.img_width, 3))
 
         self.timestep = 0
-        self.max_timestep = 200
+        self.max_timestep = 100
 
         # This is to check that all the joints (except for the last one) is above
         # the ground
@@ -66,10 +73,13 @@ class MyArm2D:
         if self.move_robot:
             self.close_connection()
 
+    def seed(self, seed=None):
+        random.seed(seed)
+
     def open_connection(self):
         if self.robot.alive:
             raise Exception("Robot is already switched on")
-        self.robot.connect("COM3")
+        self.robot.connect(self.port)
         if self.robot.alive:
             print("Success connecting to robot")
             return True
@@ -77,13 +87,13 @@ class MyArm2D:
             print("Failed to connect to robot")
             return False
 
-    def move_to_default_pos(self):
-        if self.robot.alive:
-            for ID in range(1, 7):
-                self.robot.servoWrite(ID, int(self.DEFAULT[ID - 1]), 500)
-            return True
-        else:
-            return False
+    # def move_to_default_pos(self):
+    #     if self.robot.alive:
+    #         for ID in range(1, 7):
+    #             self.robot.servoWrite(ID, int(self.DEFAULT[ID - 1]), 500)
+    #         return True
+    #     else:
+    #         return False
 
     def move_to_pos(self):
 
@@ -232,8 +242,6 @@ class MyArm2D:
 
         self.update_positions()
 
-        self.img = np.zeros((self.img_height, self.img_width, 3))
-
         self.timestep = 0
 
         self.update_goal_coords()
@@ -241,7 +249,11 @@ class MyArm2D:
         self.render()
 
         if self.move_robot:
-            self.move_to_default_pos()
+            self.move_to_pos()
+
+        state = self.goal_coords + list(self.angles)
+
+        return state
 
     def check_arm_angles(self):
         for member_index in range(self.num_members):
@@ -263,7 +275,7 @@ class MyArm2D:
     def get_reward(self, forbidden_action):
 
         if forbidden_action:
-            reward_scaling_factor = 2
+            reward_scaling_factor = 1.5
         else:
             reward_scaling_factor = 1
 
@@ -280,16 +292,17 @@ class MyArm2D:
         okay_positions = self.check_arm_positions()
 
         if not okay_angles:
-            print("An angle threshold was exceeded")
+            # print("An angle threshold was exceeded")
             self.move_arm(-actions)
             forbidden_action = True
 
         if not okay_positions:
-            print("A position threshold was exqqceeded")
+            # print("A position threshold was exceeded")
             self.move_arm(-actions)
             forbidden_action = True
 
         self.render()
+        # time.sleep(1)
 
         if self.move_robot:
             self.move_to_pos()
@@ -300,5 +313,7 @@ class MyArm2D:
 
         is_done = self.timestep >= self.max_timestep
 
-        return self.angles, r, is_done
+        state = self.goal_coords + list(self.angles)
+
+        return state, r, is_done
             
