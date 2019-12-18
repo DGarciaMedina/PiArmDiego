@@ -13,7 +13,6 @@ import tflearn
 import argparse
 import pprint as pp
 import cv2
-from tkinter import *
 import time
 from PIL import Image, ImageTk
 import os
@@ -251,17 +250,12 @@ def build_summaries():
     return summary_ops, summary_vars
 
 # ===========================
-#   Agent Training
+#   Agent Testing
 # ===========================
 
-def train(sess, env, args, actor, critic, actor_noise):
-    # Set up summary Ops
-    summary_ops, summary_vars = build_summaries()
+def run(sess, env, args, actor, critic, actor_noise):
 
     sess.run(tf.global_variables_initializer())
-    writer = tf.summary.FileWriter(args['summary_dir'], sess.graph)
-
-    saver = tf.train.Saver(max_to_keep=5)
     
     # Initialize target network weights
     actor.update_target_network()
@@ -269,11 +263,6 @@ def train(sess, env, args, actor, critic, actor_noise):
 
     # Initialize replay memory
     replay_buffer = ReplayBuffer(int(args['buffer_size']), int(args['random_seed']))
-
-    # Needed to enable BatchNorm.
-    # This hurts the performance on Pendulum but could be useful
-    # in other environments.
-    # tflearn.is_training(True)
 
     meta_file_path = r"C:\Users\diego\Documents\2019-2020\Engineering\IIB Project\Experiments\IIB_Project\PiArmDiego\results\tf_ddpg_params\ddpg-reward-521-11334.meta"
     new_saver = tf.train.import_meta_graph(meta_file_path)
@@ -283,89 +272,59 @@ def train(sess, env, args, actor, critic, actor_noise):
     print("\n\nLoading weights from:\n", latest_ckpt, "\n\n")
     new_saver.restore(sess, latest_ckpt)
 
-    starting_episode = int(latest_ckpt.split("-")[-1]) + 1
-    # starting_episode = 0
+    state = env.reset()
 
-    # max_episode_reward = - np.inf
-    max_episode_reward = int(latest_ckpt.split("-")[-2])
+    while True:
 
-    for i in range(starting_episode, int(args['max_episodes'])):
+        k = cv2.waitKey(1)
 
-        state = env.reset()
+        if k == ord("q"):
+            break
+        elif k == ord("n"):
+            state = env.reset()
 
-        ep_reward = 0
-        ep_ave_max_q = 0
+        a = actor.predict(np.reshape(state, (1, actor.s_dim))) + actor_noise()
 
-        for j in range(int(args['max_episode_len'])):
+        state2, r, terminal = env.step(a[0])
 
-            cv2.waitKey(1)
+        replay_buffer.add(np.reshape(state, (actor.s_dim,)),
+                          np.reshape(a, (actor.a_dim,)),
+                          r,
+                          terminal,
+                          np.reshape(state2, (actor.s_dim)))
 
-            # Added exploration noise
-            # a = actor.predict(np.reshape(s, (1, 3))) + (1. / (1. + i))
-            a = actor.predict(np.reshape(state, (1, actor.s_dim))) + actor_noise()
+        # Keep adding experience to the memory until
+        # there are at least minibatch size samples
+        if replay_buffer.size() > int(args['minibatch_size']):
+            s_batch, a_batch, r_batch, t_batch, s2_batch = \
+                replay_buffer.sample_batch(int(args['minibatch_size']))
 
-            state2, r, terminal = env.step(a[0])
+            # Calculate targets
+            target_q = critic.predict_target(
+                s2_batch, actor.predict_target(s2_batch))
 
-            replay_buffer.add(np.reshape(state, (actor.s_dim,)),
-                              np.reshape(a, (actor.a_dim,)),
-                              r,
-                              terminal,
-                              np.reshape(state2, (actor.s_dim)))
+            y_i = []
+            for k in range(int(args['minibatch_size'])):
+                if t_batch[k]:
+                    y_i.append(r_batch[k])
+                else:
+                    y_i.append(r_batch[k] + critic.gamma * target_q[k])
 
-            # Keep adding experience to the memory until
-            # there are at least minibatch size samples
-            if replay_buffer.size() > int(args['minibatch_size']):
-                s_batch, a_batch, r_batch, t_batch, s2_batch = \
-                    replay_buffer.sample_batch(int(args['minibatch_size']))
+            # Update the critic given the targets
+            predicted_q_value, _ = critic.train(
+                s_batch, a_batch, np.reshape(y_i, (int(args['minibatch_size']), 1)))
 
-                # Calculate targets
-                target_q = critic.predict_target(
-                    s2_batch, actor.predict_target(s2_batch))
+            # Update the actor policy using the sampled gradient
+            a_outs = actor.predict(s_batch)
+            grads = critic.action_gradients(s_batch, a_outs)
+            actor.train(s_batch, grads[0])
 
-                y_i = []
-                for k in range(int(args['minibatch_size'])):
-                    if t_batch[k]:
-                        y_i.append(r_batch[k])
-                    else:
-                        y_i.append(r_batch[k] + critic.gamma * target_q[k])
+            # Update target networks
+            actor.update_target_network()
+            critic.update_target_network()
 
-                # Update the critic given the targets
-                predicted_q_value, _ = critic.train(
-                    s_batch, a_batch, np.reshape(y_i, (int(args['minibatch_size']), 1)))
+        state = state2
 
-                ep_ave_max_q += np.amax(predicted_q_value)
-
-                # Update the actor policy using the sampled gradient
-                a_outs = actor.predict(s_batch)
-                grads = critic.action_gradients(s_batch, a_outs)
-                actor.train(s_batch, grads[0])
-
-                # Update target networks
-                actor.update_target_network()
-                critic.update_target_network()
-
-            state = state2
-            ep_reward += r
-
-            if terminal:
-                summary_str = sess.run(summary_ops, feed_dict={
-                    summary_vars[0]: ep_reward,
-                    summary_vars[1]: ep_ave_max_q / float(j)
-                })
-
-                writer.add_summary(summary_str, i)
-                writer.flush()
-
-                if max_episode_reward < ep_reward:
-                    saver.save(sess,
-                            save_path=r'c:\Users\diego\Documents\2019-2020\Engineering\IIB Project\Experiments\IIB_Project\PiArmDiego\results\tf_ddpg_params\ddpg-reward'+str(int(ep_reward)),
-                            write_meta_graph=True,
-                            global_step=i+1)
-                    max_episode_reward = ep_reward
-                
-                print('| Reward: {:d} | Episode: {:d} | Qmax: {:.4f}'.format(int(ep_reward),
-                                                                             i, (ep_ave_max_q / float(j))))
-                break
 
 
 def main(env, args):
@@ -394,7 +353,7 @@ def main(env, args):
 
         actor_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(action_dim))
 
-        train(sess, env, args, actor, critic, actor_noise)
+        run(sess, env, args, actor, critic, actor_noise)
 
 
 if __name__ == '__main__':
@@ -412,7 +371,7 @@ if __name__ == '__main__':
 
     # run parameters
     parser.add_argument('--env', help='choose the gym env- tested on {Pendulum-v0}', default='Pendulum-v0')
-    parser.add_argument('--random-seed', help='random seed for repeatability', default=1234)
+    parser.add_argument('--random-seed', help='random seed for repeatability', default=12)
     parser.add_argument('--max-episodes', help='max num of episodes to do while training', default=50000)
     parser.add_argument('--max-episode-len', help='max length of 1 episode', default=1000)
     parser.add_argument('--render-env', help='render the gym env', action='store_true')
@@ -424,6 +383,6 @@ if __name__ == '__main__':
 
     pp.pprint(args)
 
-    env = MyArm2D("COM5", move_robot=True)
+    env = MyArm2D("COM4", move_robot=False)
 
     main(env, args)

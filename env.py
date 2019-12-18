@@ -53,7 +53,8 @@ class MyArm2D:
         self.img = np.zeros((self.img_height, self.img_width, 3))
 
         self.timestep = 0
-        self.max_timestep = 100
+        # self.max_timestep = 100
+        self.max_timestep = 30
 
         # This is to check that all the joints (except for the last one) is above
         # the ground
@@ -112,8 +113,8 @@ class MyArm2D:
         angles_piarm[0] = 1000 - angles_piarm[0]
         angles_piarm[1] = 1000 - angles_piarm[1]
 
-        print("Angles in degrees: ", angles_deg)
-        print("Moving arms with angles: ", angles_piarm)
+        # print("Angles in degrees: ", angles_deg)
+        # print("Moving arms with angles: ", angles_piarm)
 
         if self.robot.alive:	
             for ID in range(3, 6):
@@ -306,6 +307,7 @@ class MyArm2D:
 
         if self.move_robot:
             self.move_to_pos()
+            time.sleep(0.5)
 
         r = self.get_reward(forbidden_action)
         
